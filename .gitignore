@@ -140,4 +140,4 @@ GitHub.sublime-settings
 # mlflow
 mlruns/
 mlartifacts/
-.ipynb
+*.ipynb
