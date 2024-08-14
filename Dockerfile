@@ -9,9 +9,7 @@ ENV PYTHONUNBUFFERED 1
 # tmp -> 최대한 컨테이너를 경량화하기 위해 빌드가 완료된 후에 사용한 파일을 삭제한다.
 COPY ./requirements.txt /tmp/requirements.txt
 COPY ./requirements.dev.txt /tmp/requirements.dev.txt
-COPY ./app /app
 
-WORKDIR /app
 EXPOSE 8000
 
 

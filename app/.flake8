@@ -1,0 +1,7 @@
+# flake8 코드 검사 제외할 목록 설정
+[flake8]
+exclude = 
+    migrations,
+    __pycache__,
+    manage.py,
+    settings.py
