@@ -282,3 +282,4 @@ res = requests.post(url, headers=headers, data=json.dumps(data))
 
 print("Server response(infernece):", res.json())
 
+# %%
