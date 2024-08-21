@@ -69,6 +69,8 @@ make_bar_chart('Sex')
 make_bar_chart('Parch')
 
 # %%
+import matplotlib.pyplot as plt
+
 for col in train.columns:
     print(col)
     make_bar_chart(col)
@@ -327,5 +329,176 @@ df_result.to_csv('submission.csv', index=False)
 # ## 파라미터 값을 버뮈 설정하고 ...
 # ## GridSearchCV 등을 써서 우리대신 최적화시키는 방법알기-
 
+# %%
+# mlflow ui - 실행여부 확인
+import mlflow
+import mlflow.sklearn
+from sklearn import datasets
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.naive_bayes import GaussianNB
+from sklearn.svm import SVC
+from sklearn.model_selection import KFold, cross_val_score
+
+#KFold?  ?붙이면 사용법
+kfold = KFold(n_splits=10, shuffle=True, random_state=123)
+
+mlflow.set_tracking_uri('http://localhost:5000')
+# set하면 mlflow에서 자동으로 만드므로 create 보다는 set
+# mlflow.create_experiment('titanic_experiment')
+mlflow.set_experiment('titanic_experiment')
+
+
+# %%
+models = {
+    "DecisionTres": DecisionTreeClassifier(),
+    "KNeighbors": KNeighborsClassifier(n_neighbors=100),
+    "RandomForest": RandomForestClassifier(n_estimators=100),
+    "GaussianNB": GaussianNB(),
+    "SVC": SVC()
+}
+
+
+
+# %%
+models.items()
+
+# %%
+# mlflow.start_run() 보다 with가좋다 finish가 자동으로 됨
+
+for model_name,model in models.items():
+    with mlflow.start_run(run_name=model_name):
+        scores = cross_val_score(
+            model,
+            df_train.drop('Survived', axis=1),
+            df_train['Survived'],
+            cv=kfold,
+            scoring='accuracy'
+        )
+
+        mean_score = np.mean(scores) * 100
+
+        mlflow.log_param(f"{model_name}_cv_folds", k_fold.get_n_splits())
+        mlflow.log_metric(f"{model_name}_accuracy", mean_score)
+
+        print(f"{model_name}'s final score : {mean_score}")
+
 # %% [markdown]
+# ### 모델 최적화
 #
+
+# %%
+import numpy as np
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.model_selection import cross_val_score
+import mlflow
+
+rcf = RandomForestClassifier(n_estimators=100)
+des = DecisionTreeClassifier()
+svc = SVC()
+
+def model_svc_tunning(c, gamma, kernal):
+    with mlflow.start_run():
+        svc = SVC(C=c, gamma=gamma, kernel=kernal)
+    
+        scores = cross_val_score(
+        svc,
+        df_train.drop(['Survived'], axis=1),
+        df_train['Survived'],
+        scoring='accuracy'
+        )
+
+        mean_score = np.mean(scores) * 100
+        mlflow.log_metric(f"mean_accuracy", mean_score)
+
+        print(f'mean_score : {mean_score}')
+
+
+def model_rcf_tunning(n_estimators=100, max_depth=None, min_samples_split=2):
+    with mlflow.start_run():
+        rcf = RandomForestClassifier(n_estimators=n_estimators, max_depth=max_depth, min_samples_split=min_samples_split)
+    
+        scores = cross_val_score(
+        rcf,
+        df_train.drop(['Survived'], axis=1),
+        df_train['Survived'],
+        scoring='accuracy'
+        )
+
+        mean_score = np.mean(scores) * 100
+        mlflow.log_metric(f"mean_accuracy", mean_score)
+
+        print(f'mean_score : {mean_score}')
+
+
+def model_des_tunning(max_depth, min_samples_split, min_samples_leaf):
+    with mlflow.start_run():
+        des = DecisionTreeClassifier(
+            criterion=criterion, 
+            max_depth=max_depth, 
+            min_samples_split=min_samples_split, 
+            min_samples_leaf=min_samples_leaf
+        )
+
+        scores = cross_val_score(
+            des,
+            df_train.drop(['Survived'], axis=1),
+            df_train['Survived'],
+            scoring='accuracy'
+        )
+
+        mean_score = np.mean(scores) * 100
+        mlflow.log_metric(f"mean_accuracy", mean_score)
+
+        print(f'mean_score : {mean_score}')
+    
+
+
+
+# %%
+c_params = [0.1, 1, 10, 100]
+gamma_params = [0.01, 0.1, 1]
+kernel_params = ['linear', 'rbf', 'poly']
+
+max_depth = 10  # 예시 값
+min_samples_split = 2  # 예시 값
+min_samples_leaf = 1  # 예시 값
+n_estimators = 100  # RandomForest의 트리 수 예시 값
+# 4 * 3 * 3 = 36 case
+
+for c in c_params:
+    for gamma in gamma_params:
+        for kernel in kernel_params:
+            model_svc_tunning(c, gamma, kernel)
+
+
+# %%
+max_depth = 10  # 예시 값
+min_samples_split = 2  # 예시 값
+min_samples_leaf = 1  # 예시 값
+n_estimators = 100  # RandomForest의 트리 수 예시 값
+criterion = 'gini'
+
+for max_depth in range(1, 10):
+    for min_samples_split in range(2, 10):
+        for min_samples_leaf in range(1, 10):
+            model_des_tunning(max_depth, min_samples_split, min_samples_leaf)
+            
+
+
+# %%
+max_depth = 10  # 예시 값
+min_samples_split = 2  # 예시 값
+n_estimators = 100  # RandomForest의 트리 수 예시 값
+
+for n_estimators in range(100, 1000, 100):
+    for max_depth in range(1, 10):
+        for min_samples_split in range(2, 10):
+            model_rcf_tunning(n_estimators, max_depth, min_samples_split)
+
+# %%
+# 오류가 나면 무시하고 넘어가라
+# import warnings
+# warnings.filterwarnings('ignore', message="")
